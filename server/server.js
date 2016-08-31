@@ -10,7 +10,7 @@ var sockets = require('./sockets');
 var routes = require('./routes');
 
 // debug
-Promise.longStackTrace();
+//Promise.longStackTrace();
 
 var app;
 var server;
@@ -26,6 +26,7 @@ function start(port, options) {
 	app.use(compress());
 	app.use(bodyParser.json());
 
+	app.use('/', express.static(__dirname + '/../client'));
 	app.use('/static/d3', express.static(__dirname + '/../node_modules/d3/build'));
 	app.use(routes({}));
 

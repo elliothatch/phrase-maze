@@ -14,3 +14,7 @@ function listen(server, options) {
 		});
 	});
 }
+
+module.exports = {
+	listen: listen
+};
