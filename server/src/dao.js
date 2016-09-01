@@ -21,34 +21,64 @@ Promise.promisifyAll(db);
 //    name: string
 //    author(?): UUID (not currently implemented)
 
-// gets a word to the given depth
-function getWord(word, depth) {
+// gets a word and descendant words at descendantDepth, ancestor words at ancestorDepth
+// only includes words that have a path to the word (e.g. with word=a, a->b->c includes c, but a->b<-c, doesn't)
+function getDirectlyRelatedWords(word, descendantDepth, ancestorDepth) {
+	var params = {
+		word: word
+	};
+
+	// Note: neo4j doesn't allow parametrization of depth, so we stick that into the query ourself
+	// be VERY sure that descendantDepth and ancestorDepth are integers!
+	var query =
+		//'MATCH (ancestor:Word)-[edgeIn:EDGE*0..' + ancestorDepth +']->(word:Word {word: {word}})-[edgeOut:EDGE*0..' + descendantDepth + ']->(descendant:Word)\n' +
+		//'RETURN *';
+		'MATCH (parent:Word)-[edgeIn:EDGE*0..2]->(source:Word {word: "world"})-[edgeOut:EDGE*0..2]->(child:Word)\n' +
+		'UNWIND edgeIn as edgesIn\n' +
+		'UNWIND edgeOut as edgesOut\n' +
+		'WITH collect(distinct parent) + collect(distinct source) + collect(distinct child) as words1,\n' +
+		'     collect(distinct edgesIn) + collect(distinct edgesOut) as edges1\n' +
+		'UNWIND words1 as words2\n' +
+		'UNWIND edges1 as edges2\n' +
+		'RETURN collect(distinct words2) as words, collect(distinct edges2) as edges';
+	return db.cypherAsync({
+		query: query,
+		params: params
+	}).then(function(results) {
+		return results[0];
+	});
 }
 
-// add an edge between two words, src and target. if the words don't exist, create them
+// gets all words associated with this word, including indirect associations (eg. with word=a, a->b<-c, c will be returned)
+function getAllRelatedWords(word, depth) {
+}
+
+// add an edge between two words, source and target. if the words don't exist, create them
 // every edge must belong to a poem. if the edge already exists for this poem and the poem-type is 'unique', nothing happens
 // (note: currently the only type is "unique" so we don't check for that, we just MERGE, which will not be a correct query if there are other poem types)
-function createEdge(src, target, poemId) {
+// returns Promise<{ source, target, edge }>
+function createEdge(source, target, poemId) {
 	var params = {
-		src: src,
+		source: source,
 		target: target,
 		poemId: poemId
 	};
 	var query =
-		'MERGE (w1:Word {word: {src}})\n' +
-		'MERGE (w2:Word {word: {target}})\n' +
-		'MERGE (w1)-[:EDGE {poemId: {poemId}}]->(w2)';
+		'MERGE (source:Word {word: {source}})\n' +
+		'MERGE (target:Word {word: {target}})\n' +
+		'MERGE (source)-[edge:EDGE {poemId: {poemId}}]->(target)\n' +
+		'RETURN source,target,edge';
 
 	return db.cypherAsync({
 		query: query,
 		params: params
 	}).then(function(results) {
-		return undefined;
+		return results[0];
 	});
 }
 
 // initializes a Poem node for the given poemId
-// Returns Promise<>, rejects if the node already exists
+// Returns Promise<Poem>, rejects if the node already exists
 function createPoemNode(poemId, type, title) {
 	var params = {
 		id: poemId,
@@ -56,18 +86,19 @@ function createPoemNode(poemId, type, title) {
 		title: title
 	};
 	var query =
-		'CREATE (p:Poem {id: {id}, type: {type}, title: {title}})' + 
-		'RETURN p';
+		'CREATE (poem:Poem {id: {id}, type: {type}, title: {title}})\n' + 
+		'RETURN poem';
 
 	return db.cypherAsync({
 		query: query,
 		params: params
 	}).then(function(results) {
-		return results;
+		return results[0].poem;
 	});
 }
 
 module.exports = {
+	getDirectlyRelatedWords: getDirectlyRelatedWords,
 	createEdge: createEdge,
 	createPoemNode: createPoemNode
 };

@@ -35,6 +35,34 @@ describe('Socket API', function() {
 		client = null;
 	});
 
+	describe('GET /words/directly-related', function() {
+		it('should return all descendant words and edges up to descendantDepth', function() {
+		});
+
+		it('should return all ancestor words and edges up to ancestorDepth', function() {
+		});
+
+		it('should return both descendant and ancestor words and edges appropriately', function() {
+			return new Promise(function(resolve, reject) {
+				client.on('/words/directly-related', function(response) {
+					//TODO: fix this and use test data
+					//expect(response).to.deep.equal({
+						//status: 200,
+						//headers: {},
+						//body: {
+						//}
+					//});
+					resolve();
+				});
+
+				client.emit('/words/directly-related', {
+					method: 'GET',
+					body: { word: 'world', descendantDepth: 2, ancestorDepth: 2 }
+				});
+			});
+		});
+	});
+
 	describe('GET /poems/create', function() {
 		it('should create a new poem node and return its properties', function() {
 			return new Promise(function(resolve, reject) {
@@ -65,11 +93,13 @@ describe('Socket API', function() {
 		it('should create a new edge and nodes', function() {
 			return new Promise(function(resolve, reject) {
 				client.on('/edges/create', function(response) {
-					var id = response.body && response.body.id;
 					expect(response).to.deep.equal({
 						status: 201,
 						headers: {},
 						body: {
+							source: { word: 'hello'},
+							target: { word: 'world'},
+							edge: { poemId: '0'}
 						}
 					});
 					resolve();
@@ -77,7 +107,7 @@ describe('Socket API', function() {
 
 				client.emit('/edges/create', {
 					method: 'GET',
-					body: { src: 'hello', target: 'world', poemId: '0' }
+					body: { source: 'hello', target: 'world', poemId: '0' }
 				});
 			});
 		});

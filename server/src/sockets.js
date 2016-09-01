@@ -11,6 +11,18 @@ function listen(server, options) {
 
 	var router = socketioRouter.Router();
 
+	// get directly related words
+	// params: { word, ancestorDepth, descendantDepth }
+	router.get('/words/directly-related', function(req, res, next) {
+		service.getDirectlyRelatedWords(req.body.word, req.body.ancestorDepth, req.body.descendantDepth)
+			.then(function(words) {
+				res.status(200).send(words);
+			})
+			.catch(function(err) {
+				return next(err);
+			});
+	});
+
 	// create a new poem
 	// params: { type: string }
 	// returns { id: poemId, type: type }
@@ -19,22 +31,22 @@ function listen(server, options) {
 			.then(function(poem) {
 				res.status(201).send(poem);
 			})
-		.catch(function(err) {
-			return next(err);
-		});
+			.catch(function(err) {
+				return next(err);
+			});
 	});
 
 	// add an edge between words
-	// params: { src: string, target: string }
-	// returns undefined
+	// params: { source: string, target: string }
+	// returns { source, target, edge }, where each field is an object with key-value pairs of properties
 	router.get('/edges/create', function(req, res, next) {
-		service.createEdge(req.body.src, req.body.target, req.body.poemId)
-			.then(function() {
-				res.status(201).send({});
+		service.createEdge(req.body.source, req.body.target, req.body.poemId)
+			.then(function(properties) {
+				res.status(201).send(properties);
 			})
-		.catch(function(err) {
-			return next(err);
-		});
+			.catch(function(err) {
+				return next(err);
+			});
 	});
 
 	router.use(function(err, req, res, next) {
