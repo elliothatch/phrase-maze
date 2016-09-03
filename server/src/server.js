@@ -26,8 +26,8 @@ function start(port, options) {
 	app.use(compress());
 	app.use(bodyParser.json());
 
-	app.use('/', express.static(__dirname + '/../client'));
-	app.use('/static/d3', express.static(__dirname + '/../node_modules/d3/build'));
+	app.use('/', express.static(__dirname + '/../../client/src'));
+	app.use('/static/d3', express.static(__dirname + '/../../node_modules/d3/build'));
 	app.use(routes({}));
 
 	server.listen(port);
