@@ -1,6 +1,6 @@
 (function(window) {
 
-	var PhraseMaze = function(nodes, links) {
+	var PhraseMaze = function(nodes, links, nodeClickHandler) {
 		this.svg = null;
 		this.width = null;
 		this.height = null;
@@ -10,6 +10,7 @@
 		this.links = links || [];
 		this.nodesGroup = null;
 		this.linksGroup = null;
+		this.nodeClickHandler = nodeClickHandler;
 		this.initialize();
 		this.update();
 	};
@@ -42,89 +43,33 @@
 		_this.linksGroup = _this.svg.append('g')
 			.attr('class', 'links');
 
+		_this.simulation = d3.forceSimulation()
+			.force("link", d3.forceLink().id(function(d) { return d.word; }).distance(60))
+			.force("charge", d3.forceManyBody()
+					.strength(-120))
+			.force("center", d3.forceCenter(_this.width / 2, _this.height / 2))
 	};
 
 	PhraseMaze.prototype.update = function() {
 		var _this = this;
-
-
-
-		/*
-		var link = _this.svg.selectAll('line')
-			.data(_this.links, function(d, i) { return d.source + ',' + d.target + ',' + d.value.poemId; });
-
-		link.enter().append('line')
-			.attr('class', 'link');
-
-		link.exit().remove();
-
-		var node = _this.svg.selectAll('g.node')
-			.data(_this.nodes, function(d, i) { return d.word; });
-
-		var nodeEnter = node.enter().append('g')
-			.attr('class', 'node')
-			.call(d3.drag()
-					.on("start", dragstarted)
-					.on("drag", dragged)
-					.on("end", dragended));
-
-		nodeEnter.append('svg:circle')
-			.attr('r', 16)
-			.attr('class', 'nodeStrokeClass');
-
-		nodeEnter.append('svg:text')
-			.attr('class', 'textClass')
-			.text(function(d) { return d.word; });
-
-		node.exit().remove();
 
 		_this.simulation
 			.nodes(_this.nodes)
 			.on("tick", ticked);
 
 		_this.simulation.force("link")
-			.links(_this.links);
+			.links(_this.links)
+			.id(function(d, i) { return d.word; });
 
-		function ticked() {
-			node.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
-			//node.selectAll('g.text')
-				//.attr("x", function(d) { return d.x; })
-				//.attr("y", function(d) { return d.y; });
-
-			link
-				.attr("x1", function(d) { return d.source.x; })
-				.attr("y1", function(d) { return d.source.y; })
-				.attr("x2", function(d) { return d.target.x; })
-				.attr("y2", function(d) { return d.target.y; });
+		_this.simulation.alphaTarget(0.3).restart();
 
 
-			//newNodes
-				//.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
-		}
-
-		//force.on('tick', function() {
-			//node.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
-
-			//link.attr('x1', function(d) { return d.source.x; })
-				//.attr('y1', function(d) { return d.source.y; })
-				//.attr('x2', function(d) { return d.target.x; })
-				//.attr('y2', function(d) { return d.target.y; });
-		//});
-
-		// restart the force layout
-		//force
-			//.gravity(0.05)
-			//.distance(50)
-			//.linkDistance(50)
-			//.size([_this.width, _this.height])
-			//.start();
-
-			*/
-		var link = _this.linksGroup.selectAll('line')
-			.data(_this.links, function(d, i) { return d.source + ',' + d.target + ',' + d.value.poemId; });
+		var link = _this.linksGroup.selectAll('g')
+			.data(_this.links, function(d, i) { return [d.source.word, d.target.word].join(','); });
 
 		var newLink = link.enter().append('g');
-		newLink.append('line')
+		newLink
+			.append('line')
 			.attr('marker-end', function(d) { return 'url(#edge)'; })
 			.attr("stroke", "#aaa")
 			.attr("stroke-width", function(d) { return Math.sqrt(1); });
@@ -135,7 +80,11 @@
 		var node = _this.nodesGroup.selectAll('g')
 			.data(_this.nodes, function(d, i) { return d.word; });
 
+		node.selectAll('text').attr("fill", function(d) { if(d.explored) { return _this.color(2); } else { return _this.color(/*d.group*/1); } });
+
 		var newNode = node.enter().append('g');
+
+		//newNode.on('click', function() { _this.nodeClickHandler.apply(this, arguments); });
 
 		newNode.call(d3.drag()
 					.on("start", dragstarted)
@@ -144,26 +93,10 @@
 
 		newNode.append('text')
 			.text(function(d) { return d.word; })
-			.attr("fill", function(d) { return _this.color(/*d.group*/1); });
-
-		//newNodes.append("title")
-			//.text(function(d) { return d.word; });
+			.attr("fill", function(d) { if(d.explored) { return _this.color(3); } else { return _this.color(/*d.group*/1); } });
 
 		var oldNode = node.exit();
 		oldNode.remove();
-
-		_this.simulation = d3.forceSimulation()
-			.force("link", d3.forceLink().id(function(d) { return d.word; }).distance(80))
-			.force("charge", d3.forceManyBody()
-					.strength(-300))
-			.force("center", d3.forceCenter(_this.width / 2, _this.height / 2))
-
-		_this.simulation
-			.nodes(_this.nodes)
-			.on("tick", ticked);
-
-		_this.simulation.force("link")
-			.links(_this.links);
 
 		var allLink = link.merge(newLink);
 		var allNode = node.merge(newNode);
@@ -175,71 +108,9 @@
 				.attr("x2", function(d) { return d.target.x; })
 				.attr("y2", function(d) { return d.target.y; });
 
-			//newNode.selectAll('text')
-				//.attr("x", function(d) { return d.x; })
-				//.attr("y", function(d) { return d.y; });
-
 			allNode
 				.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
 		}
-
-		/*
-		var edges = svg.append('g')
-			.attr('class', 'edges')
-			.selectAll('line')
-			.data(graph.edges, function(d, i) { return d.source + ',' + d.target + ',' + d.value.poemId; });
-
-		var newEdges = edges.enter().append('g');
-		newEdges.append('line')
-			.attr('marker-end', function(d) { return 'url(#edge)'; })
-			.attr("stroke", "#aaa")
-			.attr("stroke-width", function(d) { return Math.sqrt(1); });
-
-		var oldEdges = edges.exit();
-		oldEdges.remove();
-
-		var nodes = svg.append("g")
-			.attr("class", "nodes")
-			.selectAll("g")
-			.data(graph.words, function(d, i) { return d.word; });
-
-		var newNodes = nodes.enter().append('g');
-		newNodes.append('text')
-			.text(function(d) { return d.word; })
-			.attr("fill", function(d) { return color(*//*d.group*//*1); })
-			.call(d3.drag()
-					.on("start", dragstarted)
-					.on("drag", dragged)
-					.on("end", dragended));
-
-		//newNodes.append("title")
-			//.text(function(d) { return d.word; });
-
-		var oldNodes = nodes.exit();
-		oldNodes.remove();
-
-		simulation
-			.nodes(graph.words)
-			.on("tick", ticked);
-
-		simulation.force("link")
-			.links(graph.edges);
-
-		function ticked() {
-			newEdges.selectAll('line')
-				.attr("x1", function(d) { return d.source.x; })
-				.attr("y1", function(d) { return d.source.y; })
-				.attr("x2", function(d) { return d.target.x; })
-				.attr("y2", function(d) { return d.target.y; });
-
-			newNodes.selectAll('text')
-				.attr("x", function(d) { return d.x; })
-				.attr("y", function(d) { return d.y; });
-
-			//newNodes
-				//.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
-		}
-		*/
 
 		function dragstarted(d) {
 			if (!d3.event.active) _this.simulation.alphaTarget(0.3).restart();
@@ -250,6 +121,7 @@
 		function dragged(d) {
 			d.fx = d3.event.x;
 			d.fy = d3.event.y;
+			_this.nodeClickHandler.apply(this, arguments);
 		}
 
 		function dragended(d) {
@@ -289,23 +161,38 @@
 
 	var pm = null;
 	var once = false;
+	var lastWord = 'hello';
 	var socket = io.connect('/phrase-maze');
 	socket.on('/words/directly-related', function(response) {
-		console.log(response);
-		graph = response.body;
-		window.graphA = graph;
-		console.log(graph);
+		//console.log(response);
+		//graph = response.body;
+		//window.graphA = graph;
+		console.log(response.body);
 
 		if(!pm) {
-			pm = new PhraseMaze(graph.words, graph.edges);
-			setTimeout(function() {
+			pm = new PhraseMaze(response.body.words, response.body.edges, function(d) {
+				if(d.explored) {
+					return;
+				}
+				lastWord = d.word;
+				d.explored = true;
+				socket.emit('/words/directly-related', {
+					method: 'GET',
+					body: {
+						word: d.word,
+						ancestorDepth: 1,
+						descendantDepth: 1
+					}
+				});
+			});
+			//setTimeout(function() {
 				//console.log('did it');
 				//pm.nodes.pop();
 				//while(pm.links.length > 1) {
 					//pm.links.pop();
 				//}
 				//pm.update();
-			}, 1000);
+			//}, 1000);
 			//graph.words.forEach(function(w) {
 				//pm.nodes.push(w);
 			//});
@@ -315,6 +202,7 @@
 			//pm.update();
 			//graph.words.push({word: 'heyo' });
 
+			/*
 			setTimeout(function() {
 				socket.emit('/words/directly-related', {
 					method: 'GET',
@@ -325,9 +213,29 @@
 					}
 				});
 			}, 1000);
+			*/
 		}
 		else {
+			// add new data
+			var lastWordNode = pm.nodes.find(function(n) { return n.word === lastWord; });
+			response.body.words.forEach(function(w, i) {
+				var node = pm.nodes.find(function(n) { return n.word === w.word; });
+				if(!node) {
+					console.log('a', w);
+					w.x = lastWordNode.x;
+					w.y = lastWordNode.y;
+					pm.nodes.push(w);
+				}
+			});
+			response.body.edges.forEach(function(e, i) {
+				var link = pm.links.find(function(l) { return l.source.word === e.source && l.target.word === e.target && l.value.poemId === e.value.poemId; });
+				if(!link) {
+					console.log('b', e);
+					pm.links.push(e);
+				}
+			});
 			//if an entry in the new data also exists in the old data, we want the old version since it has the simulation data
+			/*
 			graph.words.forEach(function(w, i) {
 				var node = pm.nodes.find(function(n) { return n.word === w.word; });
 				if(node) {
@@ -340,17 +248,22 @@
 					graph.edges[i] = link;
 				}
 			});
-			//pm.nodes = graph.words;
-			//pm.links = graph.edges;
-			var newNodes = pm.nodes.map(function(n) { return n;});
+			pm.nodes = graph.words;
+			pm.links = graph.edges;
+			*/
+			//add each new edge one at a time so the graph doesn't spaz
+			//pm.nodes.push({word: 'hiya'});
+			//pm.links.push({source: 'hiya', target: 'view', value: { poemId: 0 }});
+			//pm.links.push({source: 'worldly', target: 'view', value: { poemId: 0 }});
+			//var newNodes = pm.nodes.map(function(n) { return n;});
 			//newNodes.push({word: 'hoooo'});
-			var newLinks = pm.links.map(function(l) { return l;});
-			newLinks.push({source: 'worldly', target: 'view', value: { poemId: 0 }});
-			newLinks.push({source: 'view', target: 'one', value: { poemId: 0 }});
-			newLinks.push({source: 'one', target: 'hello', value: { poemId: 0 }});
-			newLinks.push({source: 'hello', target: 'war', value: { poemId: 0 }});
-			pm.nodes = newNodes;
-			pm.links = newLinks;
+			//var newLinks = pm.links.map(function(l) { return l;});
+			//newLinks.push({source: 'worldly', target: 'view', value: { poemId: 0 }});
+			//newLinks.push({source: 'view', target: 'one', value: { poemId: 0 }});
+			//newLinks.push({source: 'one', target: 'hello', value: { poemId: 0 }});
+			//newLinks.push({source: 'hello', target: 'war', value: { poemId: 0 }});
+			//pm.nodes = newNodes;
+			//pm.links = newLinks;
 			pm.update();
 		}
 	});

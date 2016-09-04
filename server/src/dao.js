@@ -33,7 +33,7 @@ function getDirectlyRelatedWords(word, descendantDepth, ancestorDepth) {
 	var query =
 		//'MATCH (ancestor:Word)-[edgeIn:EDGE*0..' + ancestorDepth +']->(word:Word {word: {word}})-[edgeOut:EDGE*0..' + descendantDepth + ']->(descendant:Word)\n' +
 		//'RETURN *';
-		'MATCH (parent:Word)-[edgeIn:EDGE*0..' + ancestorDepth + ']->(source:Word {word: "world"})-[edgeOut:EDGE*0..' + descendantDepth + ']->(child:Word)\n' +
+		'MATCH (parent:Word)-[edgeIn:EDGE*0..' + ancestorDepth + ']->(source:Word {word: {word}})-[edgeOut:EDGE*0..' + descendantDepth + ']->(child:Word)\n' +
 		'UNWIND edgeIn as edgesIn\n' +
 		'UNWIND edgeOut as edgesOut\n' +
 		'WITH collect(distinct parent) + collect(distinct source) + collect(distinct child) as words1,\n' +
