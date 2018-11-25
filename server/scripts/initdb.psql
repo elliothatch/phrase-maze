@@ -1,0 +1,43 @@
+/*
+To run this script, pass the file to psql:
+	psql -f initdb.psql [db] [dbuser]
+replacing [db] and [dbuser] with your parameters
+*/
+BEGIN;
+
+CREATE SCHEMA phrasemaze;
+SET search_path TO phrasemaze,public;
+
+CREATE TABLE words (
+	source varchar(64) NOT NULL,
+	target varchar(64) NOT NULL,
+	count integer NOT NULL,
+	CONSTRAINT words_key PRIMARY KEY (source, target)
+);
+
+CRAETE TABLE poems (
+	poemid uuid PRIMARY KEY,
+	title varchar(256) NOT NULL,
+);
+
+CREATE TABLE poems_words (
+	poemid uuid REFERENCES poems ON UPDATE CASCADE ON DELETE CASCADE,
+	word varchar(120) NOT NULL,
+	position integer NOT NULL,
+	UNIQUE (poemid, position)
+);
+
+/******** ROLES ********/
+DO
+$do$
+BEGIN
+	IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname='phrasemaze') THEN
+		CREATE USER phrasemaze WITH PASSWORD 'mz-db-pass';
+	END IF;
+END
+$do$;
+
+ALTER ROLE phrasemaze IN DATABASE phrasemaze SET search_path TO phrasemaze,public;
+GRANT USAGE ON SCHEMA phrasemaze TO phrasemaze; 
+GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA phrasemaze TO phrasemaze;
+END;
